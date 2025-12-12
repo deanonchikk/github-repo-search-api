@@ -20,9 +20,9 @@ repos:
             always_run: true
             args: ["check", "github_repo_search_api", "tests", "--fix"]
 
-          - id: mypy
-            name: Validate types with MyPy
-            entry: uv run mypy
+          - id: pyrefly
+            name: Validate types with Pyrefly
+            entry: uv run pyrefly check
             language: system
             types: [python]
             pass_filenames: false

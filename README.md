@@ -95,8 +95,8 @@ pre-commit is very useful to check your code before publishing it.
 It's configured using .pre-commit-config.yaml file.
 
 By default it runs:
-* mypy (validates types);
-* ruff (spots possible bugs);
+* pyrefly (validates types);
+* ruff (spots possible bugs, formats code);
 
 
 You can read more about pre-commit here: https://pre-commit.com/
