@@ -32,10 +32,9 @@ class InterceptHandler(logging.Handler):
         frame = logging.currentframe()
         depth = 2
         while frame is not None and frame.f_code.co_filename == logging.__file__:
-            next_frame = frame.f_back
-            if next_frame is None:
+            frame = frame.f_back
+            if frame is None:
                 break
-            frame = next_frame
             depth += 1
 
         logger.opt(depth=depth, exception=record.exc_info).log(
