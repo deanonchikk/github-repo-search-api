@@ -1,0 +1,14 @@
+services:
+  api: &main_app
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    image: github_repo_search_api:${GITHUB_REPO_SEARCH_API_VERSION:-latest}
+    restart: always
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      GITHUB_REPO_SEARCH_API_HOST: 0.0.0.0
+
+
