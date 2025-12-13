@@ -17,6 +17,8 @@ dependencies = [
   "httptools >=0.7.1,<1",
   "pymongo >=4.15.4,<5",
   "loguru >=0.7.3,<1",
+  "httpx >=0.28.1,<1",
+  "aiofile >=3.9.0,<4",
 ]
 
 [dependency-groups]
@@ -101,6 +103,8 @@ lint.ignore = [
     "ANN401",  # typing.Any are disallowed in `**kwargs
     "PLR0913", # Too many arguments for function call
     "D106",    # Missing docstring in public nested class
+    "RUF001",  # Ambiguous unicode chars (false positive for Cyrillic)
+    "RUF002",  # Ambiguous unicode chars in docstrings (false positive for Cyrillic)
 ]
 exclude = [
     ".venv/"
@@ -112,6 +116,8 @@ line-length = 88
 "tests/*" = [
     "S101",    # Use of assert detected
 	"PLC0415", # Import outside toplevel
+	"SLF001",  # Private member accessed (needed for testing private methods)
+	"S106",    # Possible hardcoded password (test tokens are OK)
 ]
 
 [tool.ruff.lint.pydocstyle]

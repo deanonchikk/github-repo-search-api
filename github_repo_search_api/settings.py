@@ -38,6 +38,10 @@ class Settings(BaseSettings):
 
     log_level: LogLevel = LogLevel.INFO
 
+    github_token: str | None = None
+
+    static_dir: Path = Path(__file__).parent / "static"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_prefix="GITHUB_REPO_SEARCH_API_",
