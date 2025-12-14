@@ -2,7 +2,7 @@
 name = "github_repo_search_api"
 version = "0.1.0"
 requires-python = ">=3.12,<4.0"
-description = ""
+description = "FastAPI-сервис для поиска репозиториев на GitHub и экспорта результатов в CSV файлы"
 authors = []
 maintainers = []
 readme = "README.md"
@@ -13,9 +13,7 @@ dependencies = [
   "pydantic-settings >=2.12.0,<3",
   "yarl >=1.22.0,<2",
   "ujson >=5.11.0,<6",
-  "aiofiles >=25.1.0,<26",
   "httptools >=0.7.1,<1",
-  "pymongo >=4.15.4,<5",
   "loguru >=0.7.3,<1",
   "httpx >=0.28.1,<1",
   "aiofile >=3.9.0,<4",
@@ -56,7 +54,6 @@ filterwarnings = [
 anyio_mode = "auto"
 env = [
     "GITHUB_REPO_SEARCH_API_ENVIRONMENT=pytest",
-    "GITHUB_REPO_SEARCH_API_DB_BASE=github_repo_search_api_test",
 ]
 
 [tool.ruff]

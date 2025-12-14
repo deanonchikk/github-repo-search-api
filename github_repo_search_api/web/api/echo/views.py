@@ -10,9 +10,9 @@ async def send_echo_message(
     incoming_message: Message,
 ) -> Message:
     """
-    Sends echo back to user.
+    Возвращает эхо-сообщение пользователю.
 
-    :param incoming_message: incoming message.
-    :returns: message same as the incoming.
+    :param incoming_message: Входящее сообщение.
+    :returns: Сообщение, идентичное входящему.
     """
     return incoming_message

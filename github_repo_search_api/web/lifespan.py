@@ -9,13 +9,12 @@ async def lifespan_setup(
     app: FastAPI,
 ) -> AsyncGenerator[None]:  # pragma: no cover
     """
-    Actions to run on application startup.
+    Контекстный менеджер жизненного цикла приложения.
 
-    This function uses fastAPI app to store data
-    in the state, such as db_engine.
+    Выполняет действия при запуске и завершении приложения.
 
-    :param app: the fastAPI application.
-    :return: function that actually performs actions.
+    :param app: Экземпляр FastAPI приложения.
+    :yields: Управление передается приложению.
     """
 
     app.middleware_stack = None

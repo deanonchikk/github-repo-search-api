@@ -44,9 +44,9 @@ def get_search_service(
             "description": "Ошибка при обращении к GitHub API",
         },
     },
-    summary="Поиск реп на GitHub",
+    summary="Поиск репозиториев на GitHub",
     description=(
-        "Поиск реп на GitHub с заданными фильтрами и сохранение "
+        "Поиск репозиториев на GitHub с заданными фильтрами и сохранение "
         "результатов в CSV файл. "
         "CSV файл будет сохранен в директорию static с именем формата: "
         "`repositories_{lang}_{limit}_{offset}.csv`"
@@ -56,7 +56,7 @@ async def search_repositories(
     lang: Annotated[
         str,
         Query(
-            description="Фильтр по ЯП (например: python, javascript, go)",
+            description="Фильтр по языку программирования",
             examples=["python", "javascript", "go", "rust"],
         ),
     ],
@@ -66,57 +66,57 @@ async def search_repositories(
         Query(
             ge=1,
             le=1000,
-            description="Кол-во возвращаемых реп",
+            description="Количество возвращаемых репозиториев",
         ),
     ] = 10,
     offset: Annotated[
         int,
         Query(
             ge=0,
-            description="Кол-во пропускаемых реп (для пагинации)",
+            description="Количество пропускаемых репозиториев",
         ),
     ] = 0,
     stars_min: Annotated[
         int,
         Query(
             ge=0,
-            description="Минимальное кол-во звезд",
+            description="Минимальное количество звезд",
         ),
     ] = 0,
     stars_max: Annotated[
         int | None,
         Query(
             ge=0,
-            description="Максимальное кол-во звезд (не ограничено, если не указано)",
+            description="Максимальное количество звезд",
         ),
     ] = None,
     forks_min: Annotated[
         int,
         Query(
             ge=0,
-            description="Минимальное кол-во форков",
+            description="Минимальное количество форков",
         ),
     ] = 0,
     forks_max: Annotated[
         int | None,
         Query(
             ge=0,
-            description="Максимальное кол-во форков (не ограничено, если не указано)",
+            description="Максимальное количество форков",
         ),
     ] = None,
 ) -> RepositorySearchResponse:
     """
-    Поиск реп на GitHub и сохранение в CSV.
+    Поиск репозиториев на GitHub и сохранение в CSV.
 
-    :param lang: ЯП для фильтрации.
+    :param lang: Язык программирования для фильтрации.
     :param service: Экземпляр сервиса поиска (внедряется автоматически).
-    :param limit: Количество реп для возврата.
-    :param offset: Количество реп для пропуска.
-    :param stars_min: Минимальное кол-во звезд.
-    :param stars_max: Максимальное кол-во звезд.
-    :param forks_min: Минимальное кол-во форков.
-    :param forks_max: Максимальное кол-во форков.
-    :returns: Ответ с репами и информацией о файле.
+    :param limit: Количество репозиториев для возврата.
+    :param offset: Количество репозиториев для пропуска.
+    :param stars_min: Минимальное количество звезд.
+    :param stars_max: Максимальное количество звезд.
+    :param forks_min: Минимальное количество форков.
+    :param forks_max: Максимальное количество форков.
+    :returns: Ответ с репозиториями и информацией о файле.
     :raises HTTPException: При ошибках GitHub API.
     """
     try:

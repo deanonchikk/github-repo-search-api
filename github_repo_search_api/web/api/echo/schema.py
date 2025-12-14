@@ -2,6 +2,6 @@ from pydantic import BaseModel
 
 
 class Message(BaseModel):
-    """Simple message model."""
+    """Простая модель сообщения."""
 
     message: str

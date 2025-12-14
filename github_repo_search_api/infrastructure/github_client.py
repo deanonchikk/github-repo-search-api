@@ -209,6 +209,16 @@ class GitHubClient:
 
             response = await client.get(self.SEARCH_REPOS_ENDPOINT, params=params)
 
+            if response.status_code == 401:
+                error_data = response.json()
+                error_msg = (
+                    "GitHub API authentication failed. "
+                    "Either remove GITHUB_REPO_SEARCH_API_GITHUB_TOKEN from .env file "
+                    "or provide a valid Personal Access Token from "
+                    "https://github.com/settings/tokens"
+                )
+                raise GitHubAPIError(error_msg)
+
             if response.status_code == 403:
                 error_data = response.json()
                 if "rate limit" in error_data.get("message", "").lower():

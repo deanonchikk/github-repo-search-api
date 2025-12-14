@@ -2,6 +2,7 @@ import enum
 from pathlib import Path
 from tempfile import gettempdir
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 TEMP_DIR = Path(gettempdir())
@@ -20,27 +21,50 @@ class LogLevel(enum.StrEnum):
 
 class Settings(BaseSettings):
     """
-    Application settings.
+    Настройки приложения.
 
-    These parameters can be configured
-    with environment variables.
+    Все параметры могут быть переопределены через переменные окружения
+    с префиксом GITHUB_REPO_SEARCH_API_.
+
+    Пример:
+        GITHUB_REPO_SEARCH_API_PORT=9000
+        GITHUB_REPO_SEARCH_API_GITHUB_TOKEN=ghp_xxxxx
     """
 
     host: str = "127.0.0.1"
     port: int = 8000
-    # quantity of workers for uvicorn
-    workers_count: int = 1
-    # Enable uvicorn reloading
-    reload: bool = False
-
-    # Current environment
-    environment: str = "dev"
 
     log_level: LogLevel = LogLevel.INFO
 
     github_token: str | None = None
 
     static_dir: Path = Path(__file__).parent / "static"
+
+    @field_validator("github_token")
+    @classmethod
+    def validate_github_token(cls, v: str | None) -> str | None:
+        """
+        Валидация GitHub токена.
+
+        Игнорируем плейсхолдеры и пустые значения.
+        """
+        if not v:
+            return None
+
+        placeholders = {
+            "your-token-here",
+            "your_token_here",
+            "token",
+            "your_github_token",
+        }
+
+        if v.lower() in placeholders:
+            return None
+
+        if len(v) < 20:
+            return None
+
+        return v
 
     model_config = SettingsConfigDict(
         env_file=".env",

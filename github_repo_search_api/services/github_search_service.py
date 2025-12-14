@@ -14,7 +14,7 @@ from github_repo_search_api.settings import settings
 
 
 class GitHubSearchService:
-    """Сервис для поиска реп на GitHub и сохранения результатов в CSV файл."""
+    """Сервис для поиска репозиториев на GitHub и сохранения результатов в CSV файл."""
 
     CSV_HEADERS: ClassVar[list[str]] = [
         "name",
@@ -37,7 +37,7 @@ class GitHubSearchService:
         return f"repositories_{language}_{limit}_{offset}.csv"
 
     def _repository_to_row(self, repo: GitHubRepository) -> dict[str, str | int]:
-        """Преобразование репы в строку для CSV."""
+        """Преобразование репозитория в строку для CSV."""
         return {
             "name": repo.name,
             "description": repo.description if repo.description else "",
@@ -55,7 +55,7 @@ class GitHubSearchService:
         filepath: Path,
         repositories: list[GitHubRepository],
     ) -> None:
-        """Запись списка реп в CSV файл асинхронно."""
+        """Запись списка репозиториев в CSV файл асинхронно."""
         output = StringIO()
         writer = csv.DictWriter(output, fieldnames=self.CSV_HEADERS)
         writer.writeheader()
@@ -84,7 +84,7 @@ class GitHubSearchService:
         forks_min: int = 0,
         forks_max: int | None = None,
     ) -> tuple[Path, list[GitHubRepository]]:
-        """Поиск реп на GitHub и сохранение результатов в CSV файл."""
+        """Поиск репозиториев на GitHub и сохранение результатов в CSV файл."""
         logger.info(
             f"Searching GitHub repositories: language={language}, "
             f"limit={limit}, offset={offset}, "
