@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.responses import RedirectResponse, UJSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from github_repo_search_api import __version__
 from github_repo_search_api.log import configure_logging
 from github_repo_search_api.web.api.router import api_router
 from github_repo_search_api.web.lifespan import lifespan_setup
@@ -26,7 +27,7 @@ def get_app() -> FastAPI:
             "API для поиска репозиториев на GitHub и экспорта результатов в CSV файл. "
             "Поддерживает фильтрацию по языку программирования, звездам и форкам."
         ),
-        version="0.1.0",
+        version=__version__,
         lifespan=lifespan_setup,
         docs_url=None,
         redoc_url=None,

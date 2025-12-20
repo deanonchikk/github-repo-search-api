@@ -37,88 +37,57 @@ class GitHubClient:
     Асинхронный HTTP клиент для GitHub Search API.
 
     Использует httpx.AsyncClient для выполнения HTTP запросов к GitHub API.
-    Поддерживает аутентификацию через персональный токен.
+    Клиент должен быть передан извне и управляться на уровне приложения.
     """
 
     BASE_URL = "https://api.github.com"
     SEARCH_REPOS_ENDPOINT = "/search/repositories"
     MAX_PER_PAGE = 100
 
-    def __init__(self, token: str | None = None) -> None:
+    def __init__(self, client: httpx.AsyncClient) -> None:
         """
         Инициализация GitHub клиента.
 
-        :param token: Опциональный персональный токен доступа GitHub для аутентификации.
+        :param client: Инициализированный httpx.AsyncClient для выполнения запросов.
         """
-        self._token = token
-        self._client: httpx.AsyncClient | None = None
+        self._client = client
 
-    def _get_headers(self) -> dict[str, str]:
+    def _handle_response_error(self, response: httpx.Response) -> None:
         """
-        Формирование заголовков для HTTP запросов.
+        Обработка ошибок HTTP ответов от GitHub API.
 
-        :returns: Словарь с заголовками для запросов к GitHub API.
+        :param response: Ответ от GitHub API.
+        :raises GitHubRateLimitError: При превышении лимита запросов (403 + rate limit).
+        :raises GitHubAPIError: При других ошибках API (401, 403, 4**, 5**).
         """
-        headers = {
-            "Accept": "application/vnd.github+json",
-            "X-GitHub-Api-Version": "2022-11-28",
-        }
-        if self._token:
-            headers["Authorization"] = f"Bearer {self._token}"
-        return headers
-
-    async def _ensure_client(self) -> httpx.AsyncClient:
-        """
-        Гарантирование инициализации HTTP клиента.
-
-        :returns: Инициализированный httpx.AsyncClient.
-        """
-        if self._client is None or self._client.is_closed:
-            self._client = httpx.AsyncClient(
-                base_url=self.BASE_URL,
-                headers=self._get_headers(),
-                timeout=30.0,
+        if response.status_code == 401:
+            error_msg = (
+                "GitHub API authentication failed. "
+                "Either remove GITHUB_REPO_SEARCH_API_GITHUB_TOKEN from .env file "
+                "or provide a valid Personal Access Token from "
+                "https://github.com/settings/tokens"
             )
-        return self._client
+            raise GitHubAPIError(error_msg)
 
-    async def close(self) -> None:
-        """Закрытие HTTP клиента."""
-        if self._client is not None and not self._client.is_closed:
-            await self._client.aclose()
-            self._client = None
+        if response.status_code == 403:
+            try:
+                error_data = response.json()
+                if "rate limit" in error_data.get("message", "").lower():
+                    raise GitHubRateLimitError(
+                        "GitHub API rate limit exceeded. "
+                        "Please try again later or use authentication token.",
+                    )
+            except GitHubRateLimitError:
+                raise
+            except Exception as e:
+                logger.debug(f"Failed to parse GitHub API error response: {e}")
 
-    def _build_query(
-        self,
-        *,
-        language: str,
-        stars_min: int = 0,
-        stars_max: int | None = None,
-        forks_min: int = 0,
-        forks_max: int | None = None,
-    ) -> str:
-        """
-        Формирование строки поискового запроса с использованием GitHub DSL.
+            raise GitHubAPIError(f"GitHub API forbidden: {response.text}")
 
-        :param language: Фильтр по ЯП.
-        :param stars_min: Минимальное кол-во звезд.
-        :param stars_max: Максимальное кол-во звезд (None для неограниченного).
-        :param forks_min: Минимальное кол-во форков.
-        :param forks_max: Максимальное кол-во форков (None для неограниченного).
-        :returns: Строка запроса для GitHub search API.
-        """
-        query_parts = [f"language:{language}"]
-
-        if stars_max is not None:
-            query_parts.append(f"stars:{stars_min}..{stars_max}")
-        elif stars_min > 0:
-            query_parts.append(f"stars:>={stars_min}")
-
-        if forks_max is not None:
-            query_parts.append(f"forks:{forks_min}..{forks_max}")
-        elif forks_min > 0:
-            query_parts.append(f"forks:>={forks_min}")
-
-        return " ".join(query_parts)
+        if response.status_code >= 400:
+            raise GitHubAPIError(
+                f"GitHub API error: {response.status_code} - {response.text}",
+            )
 
     def _parse_repository(
         self,
@@ -148,13 +117,9 @@ class GitHubClient:
     async def search_repositories(
         self,
         *,
-        language: str,
+        query: str,
         limit: int,
         offset: int = 0,
-        stars_min: int = 0,
-        stars_max: int | None = None,
-        forks_min: int = 0,
-        forks_max: int | None = None,
         sort: str = "stars",
         order: str = "desc",
     ) -> list[GitHubRepository]:
@@ -162,76 +127,45 @@ class GitHubClient:
         Поиск репозиториев GitHub с заданными фильтрами.
 
         Автоматически обрабатывает пагинацию для получения
-        запрошенного количества результатов.
+        запрошенного количества результатов, начиная с позиции offset.
 
-        :param language: Фильтр по языку программирования.
+        :param query: Поисковой запрос в формате GitHub Search DSL.
         :param limit: Кол-во репозиториев для возврата.
-        :param offset: Кол-во репозиториев для пропуска.
-        :param stars_min: Минимальное кол-во звезд.
-        :param stars_max: Максимальное кол-во звезд (None для неограниченного).
-        :param forks_min: Минимальное кол-во форков.
-        :param forks_max: Максимальное кол-во форков (None для неограниченного).
+        :param offset: Кол-во репозиториев для пропуска с начала результатов.
         :param sort: Поле для сортировки (stars, forks, help-wanted-issues, updated).
         :param order: Порядок сортировки (asc, desc).
         :returns: Список объектов GitHubRepository.
         :raises GitHubRateLimitError: Если превышен лимит запросов.
         :raises GitHubAPIError: Если GitHub API вернул ошибку.
         """
-        client = await self._ensure_client()
-        query = self._build_query(
-            language=language,
-            stars_min=stars_min,
-            stars_max=stars_max,
-            forks_min=forks_min,
-            forks_max=forks_max,
-        )
-
         repositories: list[GitHubRepository] = []
-        total_needed = offset + limit
-        fetched = 0
 
-        while fetched < total_needed:
-            page = (fetched // self.MAX_PER_PAGE) + 1
-            per_page = min(self.MAX_PER_PAGE, total_needed - fetched)
+        start_page = (offset // self.MAX_PER_PAGE) + 1
+        skip_in_first_page = offset % self.MAX_PER_PAGE
+
+        fetched = 0
+        current_page = start_page
+
+        while fetched < limit:
+            remaining = limit - fetched
+            per_page = min(self.MAX_PER_PAGE, remaining + skip_in_first_page)
 
             params = {
                 "q": query,
                 "sort": sort,
                 "order": order,
                 "per_page": per_page,
-                "page": page,
+                "page": current_page,
             }
 
             logger.debug(
                 f"Searching GitHub repositories: query='{query}', "
-                f"page={page}, per_page={per_page}",
+                f"page={current_page}, per_page={per_page}",
             )
 
-            response = await client.get(self.SEARCH_REPOS_ENDPOINT, params=params)
+            response = await self._client.get(self.SEARCH_REPOS_ENDPOINT, params=params)
 
-            if response.status_code == 401:
-                error_data = response.json()
-                error_msg = (
-                    "GitHub API authentication failed. "
-                    "Either remove GITHUB_REPO_SEARCH_API_GITHUB_TOKEN from .env file "
-                    "or provide a valid Personal Access Token from "
-                    "https://github.com/settings/tokens"
-                )
-                raise GitHubAPIError(error_msg)
-
-            if response.status_code == 403:
-                error_data = response.json()
-                if "rate limit" in error_data.get("message", "").lower():
-                    raise GitHubRateLimitError(
-                        "GitHub API rate limit exceeded. "
-                        "Please try again later or use authentication token.",
-                    )
-                raise GitHubAPIError(f"GitHub API forbidden: {error_data}")
-
-            if response.status_code != 200:
-                raise GitHubAPIError(
-                    f"GitHub API error: {response.status_code} - {response.text}",
-                )
+            self._handle_response_error(response)
 
             data = response.json()
             items = data.get("items", [])
@@ -239,28 +173,24 @@ class GitHubClient:
             if not items:
                 break
 
-            for _position, item in enumerate(items, start=fetched + 1):
+            start_index = skip_in_first_page if current_page == start_page else 0
+
+            for item in items[start_index:]:
+                if fetched >= limit:
+                    break
+
                 repo = self._parse_repository(item)
                 repositories.append(repo)
+                fetched += 1
 
-            fetched += len(items)
-
-            total_count = data.get("total_count", 0)
-            if fetched >= total_count:
+            if len(items) < per_page:
                 break
 
-        return repositories[offset : offset + limit]
+            total_count = data.get("total_count", 0)
+            if offset + fetched >= total_count:
+                break
 
-    async def __aenter__(self) -> "GitHubClient":
-        """Вход в асинхронный контекстный менеджер."""
-        await self._ensure_client()
-        return self
+            current_page += 1
+            skip_in_first_page = 0
 
-    async def __aexit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc_val: BaseException | None,
-        exc_tb: object,
-    ) -> None:
-        """Выход из асинхронного контекстного менеджера."""
-        await self.close()
+        return repositories

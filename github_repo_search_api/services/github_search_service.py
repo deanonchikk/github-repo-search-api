@@ -36,6 +36,39 @@ class GitHubSearchService:
         """Генерация имени CSV файла."""
         return f"repositories_{language}_{limit}_{offset}.csv"
 
+    def _build_query(
+        self,
+        *,
+        language: str,
+        stars_min: int = 0,
+        stars_max: int | None = None,
+        forks_min: int = 0,
+        forks_max: int | None = None,
+    ) -> str:
+        """
+        Формирование строки поискового запроса с использованием GitHub DSL.
+
+        :param language: Фильтр по ЯП.
+        :param stars_min: Минимальное кол-во звезд.
+        :param stars_max: Максимальное кол-во звезд (None для неограниченного).
+        :param forks_min: Минимальное кол-во форков.
+        :param forks_max: Максимальное кол-во форков (None для неограниченного).
+        :returns: Строка запроса для GitHub search API.
+        """
+        query_parts = [f"language:{language}"]
+
+        if stars_max is not None:
+            query_parts.append(f"stars:{stars_min}..{stars_max}")
+        elif stars_min > 0:
+            query_parts.append(f"stars:>={stars_min}")
+
+        if forks_max is not None:
+            query_parts.append(f"forks:{forks_min}..{forks_max}")
+        elif forks_min > 0:
+            query_parts.append(f"forks:>={forks_min}")
+
+        return " ".join(query_parts)
+
     def _repository_to_row(self, repo: GitHubRepository) -> dict[str, str | int]:
         """Преобразование репозитория в строку для CSV."""
         return {
@@ -91,16 +124,19 @@ class GitHubSearchService:
             f"stars={stars_min}..{stars_max}, forks={forks_min}..{forks_max}",
         )
 
-        async with self._client:
-            repositories = await self._client.search_repositories(
-                language=language,
-                limit=limit,
-                offset=offset,
-                stars_min=stars_min,
-                stars_max=stars_max,
-                forks_min=forks_min,
-                forks_max=forks_max,
-            )
+        query = self._build_query(
+            language=language,
+            stars_min=stars_min,
+            stars_max=stars_max,
+            forks_min=forks_min,
+            forks_max=forks_max,
+        )
+
+        repositories = await self._client.search_repositories(
+            query=query,
+            limit=limit,
+            offset=offset,
+        )
 
         filename = self._generate_filename(language, limit, offset)
         filepath = settings.static_dir / filename

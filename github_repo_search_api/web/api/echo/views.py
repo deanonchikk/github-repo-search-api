@@ -5,7 +5,7 @@ from github_repo_search_api.web.api.echo.schema import Message
 router = APIRouter()
 
 
-@router.post("/", response_model=Message)
+@router.post("/")
 async def send_echo_message(
     incoming_message: Message,
 ) -> Message:

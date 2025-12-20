@@ -1,4 +1,3 @@
-from collections.abc import AsyncGenerator
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
@@ -12,29 +11,10 @@ from github_repo_search_api.infrastructure.github_client import (
     GitHubRepository,
 )
 from github_repo_search_api.services.github_search_service import GitHubSearchService
-from github_repo_search_api.web.application import get_app
 
 
 class TestRepositoriesAPI:
     """Тесты для API поиска репозиториев."""
-
-    @pytest.fixture
-    def fastapi_app(self) -> FastAPI:
-        """Создать FastAPI приложение."""
-        return get_app()
-
-    @pytest.fixture
-    async def client(
-        self,
-        fastapi_app: FastAPI,
-    ) -> AsyncGenerator[AsyncClient]:
-        """Создать тестовый клиент."""
-        async with AsyncClient(
-            transport=ASGITransport(fastapi_app),
-            base_url="http://test",
-            timeout=30.0,
-        ) as ac:
-            yield ac
 
     @pytest.mark.anyio
     async def test_search_repositories_missing_lang(
@@ -107,14 +87,8 @@ class TestRepositoriesAPI:
                 assert response.status_code == 200
                 data = response.json()
                 assert data["count"] == 2
-                assert len(data["repositories"]) == 2
-                assert data["repositories"][0]["name"] == "test-repo-1"
-                assert (
-                    data["repositories"][0]["description"]
-                    == "Test repository 1 description"
-                )
-                assert data["repositories"][0]["license"] == "MIT"
-                assert data["repositories"][1]["name"] == "test-repo-2"
+                assert data["filename"] == "repositories_python_2_0.csv"
+                assert "filepath" in data
         finally:
             fastapi_app.dependency_overrides.clear()
 
@@ -164,7 +138,6 @@ class TestRepositoriesAPI:
                 assert "count" in data
                 assert "filename" in data
                 assert "filepath" in data
-                assert "repositories" in data
         finally:
             fastapi_app.dependency_overrides.clear()
 

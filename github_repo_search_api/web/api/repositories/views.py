@@ -1,6 +1,7 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+import httpx
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from loguru import logger
 
 from github_repo_search_api.infrastructure.github_client import (
@@ -9,19 +10,25 @@ from github_repo_search_api.infrastructure.github_client import (
     GitHubRateLimitError,
 )
 from github_repo_search_api.services.github_search_service import GitHubSearchService
-from github_repo_search_api.settings import settings
 from github_repo_search_api.web.api.repositories.schema import (
     ErrorResponse,
-    RepositoryItem,
+    RepositorySearchParams,
     RepositorySearchResponse,
 )
 
 router = APIRouter()
 
 
-def get_github_client() -> GitHubClient:
+def get_http_client(request: Request) -> httpx.AsyncClient:
+    """Получение httpx клиента из state приложения."""
+    return request.app.state.http_client
+
+
+def get_github_client(
+    http_client: Annotated[httpx.AsyncClient, Depends(get_http_client)],
+) -> GitHubClient:
     """Фабрика для создания экземпляра GitHubClient."""
-    return GitHubClient(token=settings.github_token)
+    return GitHubClient(client=http_client)
 
 
 def get_search_service(
@@ -53,103 +60,32 @@ def get_search_service(
     ),
 )
 async def search_repositories(
-    lang: Annotated[
-        str,
-        Query(
-            description="Фильтр по языку программирования",
-            examples=["python", "javascript", "go", "rust"],
-        ),
-    ],
+    params: Annotated[RepositorySearchParams, Query()],
     service: Annotated[GitHubSearchService, Depends(get_search_service)],
-    limit: Annotated[
-        int,
-        Query(
-            ge=1,
-            le=1000,
-            description="Количество возвращаемых репозиториев",
-        ),
-    ] = 10,
-    offset: Annotated[
-        int,
-        Query(
-            ge=0,
-            description="Количество пропускаемых репозиториев",
-        ),
-    ] = 0,
-    stars_min: Annotated[
-        int,
-        Query(
-            ge=0,
-            description="Минимальное количество звезд",
-        ),
-    ] = 0,
-    stars_max: Annotated[
-        int | None,
-        Query(
-            ge=0,
-            description="Максимальное количество звезд",
-        ),
-    ] = None,
-    forks_min: Annotated[
-        int,
-        Query(
-            ge=0,
-            description="Минимальное количество форков",
-        ),
-    ] = 0,
-    forks_max: Annotated[
-        int | None,
-        Query(
-            ge=0,
-            description="Максимальное количество форков",
-        ),
-    ] = None,
 ) -> RepositorySearchResponse:
     """
     Поиск репозиториев на GitHub и сохранение в CSV.
 
-    :param lang: Язык программирования для фильтрации.
+    :param params: Параметры поиска репозиториев.
     :param service: Экземпляр сервиса поиска (внедряется автоматически).
-    :param limit: Количество репозиториев для возврата.
-    :param offset: Количество репозиториев для пропуска.
-    :param stars_min: Минимальное количество звезд.
-    :param stars_max: Максимальное количество звезд.
-    :param forks_min: Минимальное количество форков.
-    :param forks_max: Максимальное количество форков.
     :returns: Ответ с репозиториями и информацией о файле.
     :raises HTTPException: При ошибках GitHub API.
     """
     try:
         filepath, repositories = await service.search_and_save(
-            language=lang,
-            limit=limit,
-            offset=offset,
-            stars_min=stars_min,
-            stars_max=stars_max,
-            forks_min=forks_min,
-            forks_max=forks_max,
+            language=params.lang,
+            limit=params.limit,
+            offset=params.offset,
+            stars_min=params.stars_min,
+            stars_max=params.stars_max,
+            forks_min=params.forks_min,
+            forks_max=params.forks_max,
         )
 
-        response_items = [
-            RepositoryItem(
-                name=repo.name,
-                description=repo.description,
-                url=repo.url,
-                size=repo.size,
-                stars=repo.stars,
-                forks=repo.forks,
-                issues=repo.issues,
-                language=repo.language,
-                license=repo.license,
-            )
-            for repo in repositories
-        ]
-
         return RepositorySearchResponse(
-            count=len(response_items),
+            count=len(repositories),
             filename=filepath.name,
             filepath=str(filepath),
-            repositories=response_items,
         )
 
     except GitHubRateLimitError as e:

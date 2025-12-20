@@ -1,6 +1,7 @@
 from collections.abc import AsyncGenerator
 from typing import Any
 
+import httpx
 import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
@@ -20,14 +21,37 @@ def anyio_backend() -> str:
 
 
 @pytest.fixture
-def fastapi_app() -> FastAPI:
+def mock_http_client() -> httpx.AsyncClient:
+    """
+    Фикстура для создания mock HTTP клиента.
+
+    :return: Настроенный httpx.AsyncClient для тестов.
+    """
+    return httpx.AsyncClient(
+        base_url="https://api.github.com",
+        headers={
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+        },
+        timeout=30.0,
+    )
+
+
+@pytest.fixture
+def fastapi_app(mock_http_client: httpx.AsyncClient) -> FastAPI:
     """
     Фикстура для создания FastAPI приложения.
 
+    :param mock_http_client: Mock HTTP клиент для тестов.
     :return: FastAPI приложение с замоканными зависимостями.
     """
     application = get_app()
-    return application  # noqa: RET504
+    # Инициализируем http_client в state для тестов
+    application.state.http_client = mock_http_client
+    # Пересоздаем middleware stack чтобы он видел обновленный state
+    application.middleware_stack = None
+    application.middleware_stack = application.build_middleware_stack()
+    return application
 
 
 @pytest.fixture
