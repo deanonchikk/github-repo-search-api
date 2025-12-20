@@ -4,13 +4,11 @@ from github_repo_search_api.settings import settings
 
 
 def main() -> None:
-    """Entrypoint of the application."""
+    """Точка входа в приложение."""
     uvicorn.run(
         "github_repo_search_api.web.application:get_app",
-        workers=settings.workers_count,
         host=settings.host,
         port=settings.port,
-        reload=settings.reload,
         log_level=settings.log_level.value.lower(),
         factory=True,
     )

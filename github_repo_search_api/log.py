@@ -8,20 +8,19 @@ from github_repo_search_api.settings import settings
 
 class InterceptHandler(logging.Handler):
     """
-    Default handler from examples in loguru documentation.
+    Стандартный обработчик из примеров документации loguru.
 
-    This handler intercepts all log requests and
-    passes them to loguru.
+    Перехватывает все запросы логирования и передает их в loguru.
 
-    For more info see:
+    Подробнее см.:
     https://loguru.readthedocs.io/en/stable/overview.html#entirely-compatible-with-standard-logging
     """
 
     def emit(self, record: logging.LogRecord) -> None:  # pragma: no cover
         """
-        Propagates logs to loguru.
+        Передача логов в loguru.
 
-        :param record: record to log.
+        :param record: Запись для логирования.
         """
         try:
             level: str | int = logger.level(record.levelname).name
@@ -44,7 +43,7 @@ class InterceptHandler(logging.Handler):
 
 
 def configure_logging() -> None:  # pragma: no cover
-    """Configures logging."""
+    """Настройка логирования приложения."""
     intercept_handler = InterceptHandler()
 
     logging.basicConfig(handlers=[intercept_handler], level=logging.NOTSET)

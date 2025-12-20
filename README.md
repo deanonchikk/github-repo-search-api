@@ -1,120 +1,232 @@
-# github_repo_search_api
+# GitHub Repository Search API
 
-This project was generated using fastapi_template.
+FastAPI-сервис для поиска репозиториев на GitHub и экспорта результатов в CSV файлы.
 
-## UV
+## 📋 Описание
 
-This project uses uv. It's a modern dependency management
-tool.
+REST API для поиска GitHub репозиториев с фильтрацией по языку программирования, звёздам и форкам. Результаты автоматически сохраняются в CSV файлы.
 
-To run the project use this set of commands:
+## 🏗️ Архитектура
 
-```bash
-uv sync --locked
-uv run -m github_repo_search_api
+Проект построен на трёхслойной архитектуре:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    API Layer                            │
+│              web/api/repositories/                      │
+│      HTTP эндпойнты, валидация, Pydantic схемы          │
+├─────────────────────────────────────────────────────────┤
+│                  Service Layer                          │
+│                    services/                            │
+│       Бизнес-логика, генерация CSV файлов               │
+├─────────────────────────────────────────────────────────┤
+│               Infrastructure Layer                      │
+│                  infrastructure/                        │
+│          HTTP клиент для GitHub API                     │
+└─────────────────────────────────────────────────────────┘
 ```
 
-This will start the server on the configured host.
+## 🚀 Быстрый старт
 
-You can find swagger documentation at `/api/docs`.
+### Требования
 
-You can read more about uv here: https://docs.astral.sh/ruff/
+- `Python 3.12+`
+- `uv` - менеджер зависимостей
 
-## Docker
-
-You can start the project with docker using this command:
-
-```bash
-docker-compose up --build
-```
-
-If you want to develop in docker with autoreload and exposed ports add `-f deploy/docker-compose.dev.yml` to your docker command.
-Like this:
+### Установка
 
 ```bash
-docker-compose -f docker-compose.yml -f deploy/docker-compose.dev.yml --project-directory . up --build
+# Установка зависимостей
+make install
+# или
+uv sync
 ```
 
-This command exposes the web application on port 8000, mounts current directory and enables autoreload.
-
-But you have to rebuild image every time you modify `uv.lock` or `pyproject.toml` with this command:
+### Запуск
 
 ```bash
-docker-compose build
+# Production режим
+make run
+
+# Development режим с перезагрузкой
+make dev
 ```
 
-## Project structure
+Сервер запустится на `http://127.0.0.1:8000`
+
+## 🔍 Использование API
+
+### Поиск репозиториев
+
+**GET** `/api/repositories/search`
+
+#### Параметры запроса
+
+| Параметр    | Тип      | Обязательный | По умолчанию | Описание                              |
+|-------------|----------|--------------|--------------|---------------------------------------|
+| `lang`      | string   | ✅ Да        | —            | Язык программирования                 |
+| `limit`     | integer  | Нет          | 10           | Количество репозиториев (1-1000)      |
+| `offset`    | integer  | Нет          | 0            | Смещение для пагинации                |
+| `stars_min` | integer  | Нет          | 0            | Минимальное количество звёзд          |
+| `stars_max` | integer  | Нет          | None         | Максимальное количество звёзд         |
+| `forks_min` | integer  | Нет          | 0            | Минимальное количество форков         |
+| `forks_max` | integer  | Нет          | None         | Максимальное количество форков        |
+
+Ожидаем следующий параметр запроса ответом в PR!
+
+#### Пример запроса
 
 ```bash
-$ tree "github_repo_search_api"
-github_repo_search_api
-├── conftest.py  # Fixtures for all tests.
-├── __main__.py  # Startup script. Starts uvicorn.
-├── services  # Package for different external services such as rabbit or redis etc.
-├── settings.py  # Main configuration settings for project.
-├── static  # Static content.
-├── tests  # Tests for project.
-└── web  # Package contains web server. Handlers, startup config.
-    ├── api  # Package with all handlers.
-    │   └── router.py  # Main router.
-    ├── application.py  # FastAPI application configuration.
-    └── lifespan.py  # Contains actions to perform on startup and shutdown.
+curl "http://127.0.0.1:8000/api/repositories/search?lang=python&limit=10&stars_min=1000"
 ```
 
-## Configuration
+#### Пример ответа
 
-This application can be configured with environment variables.
-
-You can create `.env` file in the root directory and place all
-environment variables here. 
-
-All environment variables should start with "GITHUB_REPO_SEARCH_API_" prefix.
-
-For example if you see in your "github_repo_search_api/settings.py" a variable named like
-`random_parameter`, you should provide the "GITHUB_REPO_SEARCH_API_RANDOM_PARAMETER" 
-variable to configure the value. This behaviour can be changed by overriding `env_prefix` property
-in `github_repo_search_api.settings.Settings.Config`.
-
-An example of .env file:
-```bash
-GITHUB_REPO_SEARCH_API_RELOAD="True"
-GITHUB_REPO_SEARCH_API_PORT="8000"
-GITHUB_REPO_SEARCH_API_ENVIRONMENT="dev"
+```json
+{
+  "count": 10,
+  "filename": "repositories_python_10_0.csv",
+  "filepath": "/path/to/static/repositories_python_10_0.csv",
+  "repositories": [
+    {
+      "name": "awesome-python",
+      "description": "A curated list of awesome Python frameworks",
+      "url": "https://github.com/vinta/awesome-python",
+      "size": 5432,
+      "stars": 150000,
+      "forks": 20000,
+      "issues": 50,
+      "language": "Python",
+      "license": "CC-BY-4.0"
+    }
+  ]
+}
 ```
 
-You can read more about BaseSettings class here: https://pydantic-docs.helpmanual.io/usage/settings/
+## 📄 Формат CSV
 
-## Pre-commit
+Генерируемые CSV файлы имеют следующую структуру:
 
-To install pre-commit simply run inside the shell:
-```bash
-pre-commit install
+```csv
+name,description,url,size,stars,forks,issues,language,license
 ```
 
-pre-commit is very useful to check your code before publishing it.
-It's configured using .pre-commit-config.yaml file.
+Файлы сохраняются в `github_repo_search_api/static/` с именем: `repositories_{lang}_{limit}_{offset}.csv`
 
-By default it runs:
-* pyrefly (validates types);
-* ruff (spots possible bugs, formats code);
+## ⚙️ Конфигурация
 
-
-You can read more about pre-commit here: https://pre-commit.com/
-
-
-## Running tests
-
-If you want to run it in docker, simply run:
+Создайте файл `.env` в корне проекта (или скопируйте из `.env.example`):
 
 ```bash
-docker-compose run --build --rm api pytest -vv .
-docker-compose down
+cp .env.example .env
 ```
 
-For running tests on your local machine.
+### Переменные окружения
 
+```env
+# GitHub API токен (опционально, увеличивает лимит запросов)
+# Раскомментируйте и укажите ваш реальный токен:
+# GITHUB_REPO_SEARCH_API_GITHUB_TOKEN=your_token_here
 
-2. Run the pytest.
+# Хост и порт сервера
+GITHUB_REPO_SEARCH_API_HOST=127.0.0.1
+GITHUB_REPO_SEARCH_API_PORT=8000
+
+# Уровень логирования (NOTSET | DEBUG | INFO | WARNING | ERROR | FATAL)
+GITHUB_REPO_SEARCH_API_LOG_LEVEL=INFO
+```
+
+## 🔍 Качество кода
+
 ```bash
-pytest -vv .
+# Проверка линтером (без исправлений)
+make lint-check
+
+# Линтинг с автоисправлением
+make lint
+
+# Форматирование кода
+make format
+
+# Покрытие тестами
+make coverage
 ```
+
+## 🐳 Docker
+
+### Запуск в контейнере
+
+```bash
+# Сборка образа
+make build
+
+# Запуск контейнера
+make up
+
+# Остановка
+make down
+
+# Просмотр логов
+make logs
+```
+
+API будет доступен на `http://localhost:8000`
+
+### Docker Compose
+
+```yaml
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./github_repo_search_api/static:/app/github_repo_search_api/static
+    environment:
+      GITHUB_REPO_SEARCH_API_HOST: 0.0.0.0
+```
+
+## 📁 Структура проекта
+
+```
+github_repo_search_api/
+├── github_repo_search_api/
+│   ├── infrastructure/           # Внешние интеграции
+│   │   └── github_client.py      # HTTP клиент для GitHub API
+│   ├── services/                 # Бизнес-логика
+│   │   └── github_search_service.py
+│   ├── web/
+│   │   ├── api/
+│   │   │   └── repositories/     # API эндпойнты
+│   │   │       ├── schema.py     # Pydantic модели
+│   │   │       └── views.py      # Обработчики запросов
+│   │   ├── application.py        # Фабрика FastAPI приложения
+│   │   └── lifespan.py           # Жизненный цикл приложения
+│   ├── static/                   # Генерируемые CSV файлы
+│   ├── settings.py               # Конфигурация
+│   └── __main__.py               # Точка входа
+├── tests/                        # Тесты
+├── Dockerfile
+├── docker-compose.yml
+├── Makefile
+├── pyproject.toml
+└── README.md
+```
+
+## 📝 Makefile команды
+
+| Команда          | Описание                             |
+|------------------|--------------------------------------|
+| `make install`   | Установка зависимостей               |
+| `make run`       | Запуск сервера                       |
+| `make dev`       | Запуск в режиме разработки           |
+| `make test`      | Запуск тестов                        |
+| `make lint`      | Линтинг с автоисправлением           |
+| `make lint-check`| Проверка линтером                    |
+| `make format`    | Форматирование кода                  |
+| `make build`     | Сборка Docker образа                 |
+| `make up`        | Запуск Docker контейнера             |
+| `make down`      | Остановка Docker контейнера          |
+| `make logs`      | Просмотр логов Docker                |
+| `make restart`   | Перезапуск Docker контейнера         |
+

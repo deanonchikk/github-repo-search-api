@@ -7,10 +7,10 @@ from starlette import status
 
 async def test_echo(fastapi_app: FastAPI, client: AsyncClient) -> None:
     """
-    Tests that echo route works.
+    Проверка работы echo эндпойнта.
 
-    :param fastapi_app: current application.
-    :param client: client for the app.
+    :param fastapi_app: Текущее приложение.
+    :param client: Клиент для приложения.
     """
     url = fastapi_app.url_path_for("send_echo_message")
     message = uuid.uuid4().hex
